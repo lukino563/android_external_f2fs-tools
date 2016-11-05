@@ -34,7 +34,7 @@
 #define BLKSECDISCARD	_IO(0x12,125)
 #endif
 
-int f2fs_trim_device(int fd)
+int f2fs_trim_device(int fd, u_int64_t bytes)
 {
 	unsigned long long range[2];
 	struct stat stat_buf;
@@ -45,7 +45,7 @@ int f2fs_trim_device(int fd)
 	}
 
 	range[0] = 0;
-	range[1] = stat_buf.st_size;
+	range[1] = bytes;
 
 #if defined(WITH_BLKDISCARD) && defined(BLKDISCARD)
 	MSG(0, "Info: Discarding device\n");
@@ -58,6 +58,8 @@ int f2fs_trim_device(int fd)
 #endif
 		return 0;
 	} else if (S_ISBLK(stat_buf.st_mode)) {
+		if (c.zoned_mode)
+			return f2fs_reset_zones();
 #ifdef BLKSECDISCARD
 		if (ioctl(fd, BLKSECDISCARD, &range) < 0) {
 			MSG(0, "Info: This device doesn't support BLKSECDISCARD\n");
@@ -70,8 +72,7 @@ int f2fs_trim_device(int fd)
 		if (ioctl(fd, BLKDISCARD, &range) < 0) {
 			MSG(0, "Info: This device doesn't support BLKDISCARD\n");
 		} else {
-			MSG(0, "Info: Discarded %lu MB\n",
-						stat_buf.st_size >> 20);
+			MSG(0, "Info: Discarded %llu MB\n", range[1] >> 20);
 		}
 	} else
 		return -1;

@@ -171,7 +171,9 @@ static void migrate_main(struct f2fs_sb_info *sbi,
 		}
 	}
 	free(raw);
-	DBG(0, "Info: Done to migrate data and node blocks\n");
+	DBG(0, "Info: Done to migrate Main area: main_blkaddr = 0x%x -> 0x%x\n",
+				START_BLOCK(sbi, 0),
+				START_BLOCK(sbi, 0) + offset);
 }
 
 static void move_ssa(struct f2fs_sb_info *sbi, unsigned int segno,
@@ -204,17 +206,37 @@ static void migrate_ssa(struct f2fs_sb_info *sbi,
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 	block_t old_sum_blkaddr = get_sb(ssa_blkaddr);
 	block_t new_sum_blkaddr = get_newsb(ssa_blkaddr);
-	int segno;
+	block_t end_sum_blkaddr = get_newsb(main_blkaddr);
+	block_t blkaddr;
+	void *zero_block = calloc(BLOCK_SZ, 1);
 
-	if (new_sum_blkaddr < old_sum_blkaddr + offset) {
-		for (segno = offset; segno < TOTAL_SEGS(sbi); segno++)
-			move_ssa(sbi, segno, new_sum_blkaddr + segno - offset);
+	ASSERT(zero_block);
+
+	if (offset && new_sum_blkaddr < old_sum_blkaddr + offset) {
+		blkaddr = new_sum_blkaddr;
+		while (blkaddr < end_sum_blkaddr) {
+			if (blkaddr - new_sum_blkaddr < TOTAL_SEGS(sbi))
+				move_ssa(sbi, offset, blkaddr);
+			else
+				dev_write_block(zero_block, blkaddr);
+			offset++;
+			blkaddr++;
+		}
 	} else {
-		for (segno = TOTAL_SEGS(sbi) - 1; segno >= offset; segno--)
-			move_ssa(sbi, segno, new_sum_blkaddr + segno - offset);
+		blkaddr = end_sum_blkaddr - 1;
+		offset = TOTAL_SEGS(sbi) - 1;
+		while (blkaddr >= new_sum_blkaddr) {
+			if (blkaddr >= TOTAL_SEGS(sbi) + new_sum_blkaddr)
+				dev_write_block(zero_block, blkaddr);
+			else
+				move_ssa(sbi, offset--, blkaddr);
+			blkaddr--;
+		}
 	}
 
-	DBG(0, "Info: Done to migrate SSA blocks\n");
+	DBG(0, "Info: Done to migrate SSA blocks: sum_blkaddr = 0x%x -> 0x%x\n",
+				old_sum_blkaddr, new_sum_blkaddr);
+	free(zero_block);
 }
 
 static int shrink_nats(struct f2fs_sb_info *sbi,
@@ -323,9 +345,10 @@ static void migrate_nat(struct f2fs_sb_info *sbi,
 				(block_off & ((1 << sbi->log_blocks_per_seg) - 1)));
 		ret = dev_write_block(nat_block, block_addr);
 		ASSERT(ret >= 0);
-		DBG(1, "Write NAT: %lx\n", block_addr);
+		DBG(3, "Write NAT: %lx\n", block_addr);
 	}
-	DBG(0, "Info: Done to migrate NAT blocks\n");
+	DBG(0, "Info: Done to migrate NAT blocks: nat_blkaddr = 0x%x -> 0x%x\n",
+			old_nat_blkaddr, new_nat_blkaddr);
 }
 
 static void migrate_sit(struct f2fs_sb_info *sbi,
@@ -347,7 +370,7 @@ static void migrate_sit(struct f2fs_sb_info *sbi,
 	for (index = 0; index < sit_blks; index++) {
 		ret = dev_write_block(sit_blk, get_newsb(sit_blkaddr) + index);
 		ASSERT(ret >= 0);
-		DBG(1, "Write zero sit: %x\n", get_newsb(sit_blkaddr) + index);
+		DBG(3, "Write zero sit: %x\n", get_newsb(sit_blkaddr) + index);
 	}
 
 	for (segno = 0; segno < TOTAL_SEGS(sbi); segno++) {
@@ -382,7 +405,8 @@ static void migrate_sit(struct f2fs_sb_info *sbi,
 	ASSERT(ret >= 0);
 
 	free(sit_blk);
-	DBG(0, "Info: Done to migrate SIT blocks\n");
+	DBG(0, "Info: Done to restore new SIT blocks: 0x%x\n",
+					get_newsb(sit_blkaddr));
 }
 
 static void rebuild_checkpoint(struct f2fs_sb_info *sbi,
@@ -413,7 +437,7 @@ static void rebuild_checkpoint(struct f2fs_sb_info *sbi,
 	set_cp(overprov_segment_count, get_cp(overprov_segment_count) +
 						get_cp(rsvd_segment_count));
 
-	free_segment_count = get_cp(free_segment_count);
+	free_segment_count = get_free_segments(sbi);
 	new_segment_count = get_newsb(segment_count_main) -
 					get_sb(segment_count_main);
 
@@ -526,7 +550,8 @@ int f2fs_resize(struct f2fs_sb_info *sbi)
 	struct f2fs_super_block new_sb_raw;
 	struct f2fs_super_block *new_sb = &new_sb_raw;
 	block_t end_blkaddr, old_main_blkaddr, new_main_blkaddr;
-	unsigned int offset, offset_seg;
+	unsigned int offset;
+	unsigned int offset_seg = 0;
 	int err = -1;
 
 	/* flush NAT/SIT journal entries */
@@ -545,16 +570,14 @@ int f2fs_resize(struct f2fs_sb_info *sbi)
 		}
 	}
 
-	c.dbg_lv = 1;
 	print_raw_sb_info(sb);
 	print_raw_sb_info(new_sb);
-	c.dbg_lv = 0;
 
 	old_main_blkaddr = get_sb(main_blkaddr);
 	new_main_blkaddr = get_newsb(main_blkaddr);
 	offset = new_main_blkaddr - old_main_blkaddr;
-	end_blkaddr = (get_sb(segment_count) << get_sb(log_blocks_per_seg)) +
-						get_sb(main_blkaddr);
+	end_blkaddr = (get_sb(segment_count_main) <<
+			get_sb(log_blocks_per_seg)) + get_sb(main_blkaddr);
 
 	if (old_main_blkaddr > new_main_blkaddr) {
 		MSG(0, "\tError: Support resize to expand only\n");
@@ -562,13 +585,12 @@ int f2fs_resize(struct f2fs_sb_info *sbi)
 	}
 
 	err = -EAGAIN;
-	offset_seg = offset >> get_sb(log_blocks_per_seg);
-
 	if (new_main_blkaddr < end_blkaddr) {
 		err = f2fs_defragment(sbi, old_main_blkaddr, offset,
 						new_main_blkaddr, 0);
-		if (err)
-			MSG(0, "Skip defragement\n");
+		if (!err)
+			offset_seg = offset >> get_sb(log_blocks_per_seg);
+		MSG(0, "Try to do defragement: %s\n", err ? "Skip": "Done");
 	}
 	/* move whole data region */
 	if (err)
