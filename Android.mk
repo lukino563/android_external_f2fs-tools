@@ -4,13 +4,13 @@ LOCAL_PATH:= $(call my-dir)
 ifneq (,$(filter linux darwin,$(HOST_OS)))
 
 # The versions depend on $(LOCAL_PATH)/VERSION
-global_CFLAGS := -DWITH_ANDROID -DWITH_BLKDISCARD -DF2FS_MAJOR_VERSION=1 -DF2FS_MINOR_VERSION=7 -DF2FS_TOOLS_VERSION=\"1.7.0\" -DF2FS_TOOLS_DATE=\"2016-07-28\"
+global_CFLAGS := -DWITH_ANDROID -DWITH_BLKDISCARD -DF2FS_MAJOR_VERSION=1 -DF2FS_MINOR_VERSION=7 -DF2FS_TOOLS_VERSION=\"1.7.0\" -DF2FS_TOOLS_DATE=\"2016-11-05\"
 
 # external/e2fsprogs/lib is needed for uuid/uuid.h
 common_C_INCLUDES := $(LOCAL_PATH)/include external/e2fsprogs/lib/ $(LOCAL_PATH)/mkfs
 
 #----------------------------------------------------------
-libf2fs_src_files := lib/libf2fs.c lib/libf2fs_io.c
+libf2fs_src_files := lib/libf2fs.c lib/libf2fs_io.c lib/libf2fs_zoned.c
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := libf2fs
@@ -117,3 +117,4 @@ LOCAL_STATIC_LIBRARIES := \
 include $(BUILD_HOST_SHARED_LIBRARY)
 
 endif
+
