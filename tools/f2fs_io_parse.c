@@ -79,7 +79,7 @@ struct pid_ent {
 };
 
 /* global variables */
-int major = 0, minor = 0;
+int pmajor = 0, pminor = 0;
 int show_option = SHOW_ALL;
 unsigned long long total_io[__NR_FILES][MAX_RW];
 
@@ -127,10 +127,10 @@ static int parse_options(int argc, char *argv[])
 			show_option = SHOW_FTYPE;
 			break;
 		case 'm':
-			major = atoh(optarg);
+			pmajor = atoh(optarg);
 			break;
 		case 'n':
-			minor = atoh(optarg);
+			pminor = atoh(optarg);
 			break;
 		case 'p':
 			show_option = SHOW_PID;
@@ -223,10 +223,10 @@ static void do_parse(FILE *file)
 		if (i == TP_MAX)
 			continue;
 		ptr = strtok(NULL, " :");
-		if (major && major != atoh(ptr))
+		if (pmajor && pmajor != atoh(ptr))
 			continue;
 		ptr = strtok(NULL, " :");
-		if (minor && minor != atoh(ptr))
+		if (pminor && pminor != atoh(ptr))
 			continue;
 
 		switch (i) {

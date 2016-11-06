@@ -84,6 +84,31 @@ include $(BUILD_STATIC_LIBRARY)
 
 #----------------------------------------------------------
 include $(CLEAR_VARS)
+LOCAL_MODULE := f2fstat
+LOCAL_SRC_FILES := tools/f2fstat.c
+LOCAL_C_INCLUDES := $(common_C_INCLUDES)
+LOCAL_CFLAGS := $(global_CFLAGS)
+LOCAL_MODULE_TAGS := optional
+include $(BUILD_EXECUTABLE)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := fibmap.f2fs
+LOCAL_SRC_FILES := tools/fibmap.c
+LOCAL_C_INCLUDES := $(common_C_INCLUDES)
+LOCAL_CFLAGS := $(global_CFLAGS)
+LOCAL_MODULE_TAGS := optional
+include $(BUILD_EXECUTABLE)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := parse.f2fs
+LOCAL_SRC_FILES := tools/f2fs_io_parse.c
+LOCAL_C_INCLUDES := $(common_C_INCLUDES)
+LOCAL_CFLAGS := $(global_CFLAGS)
+LOCAL_MODULE_TAGS := optional
+include $(BUILD_EXECUTABLE)
+
+#----------------------------------------------------------
+include $(CLEAR_VARS)
 LOCAL_MODULE := libf2fs_fmt_host
 LOCAL_SRC_FILES := \
     lib/libf2fs.c \
