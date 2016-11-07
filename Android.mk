@@ -13,14 +13,6 @@ common_C_INCLUDES := $(LOCAL_PATH)/include external/e2fsprogs/lib/
 libf2fs_src_files := lib/libf2fs.c lib/libf2fs_io.c lib/libf2fs_zoned.c
 
 include $(CLEAR_VARS)
-LOCAL_MODULE := libf2fs
-LOCAL_SRC_FILES := $(libf2fs_src_files)
-LOCAL_C_INCLUDES := $(common_C_INCLUDES)
-LOCAL_CFLAGS := $(global_CFLAGS)
-LOCAL_SHARED_LIBRARIES := libext2_uuid libsparse libz libselinux
-include $(BUILD_SHARED_LIBRARY)
-
-include $(CLEAR_VARS)
 LOCAL_MODULE := libf2fs_static
 LOCAL_SRC_FILES := $(libf2fs_src_files)
 LOCAL_C_INCLUDES := $(common_C_INCLUDES)
@@ -43,14 +35,6 @@ LOCAL_STATIC_LIBRARIES := libc libf2fs_static libext2_uuid_static
 LOCAL_MODULE_TAGS := optional
 LOCAL_FORCE_STATIC_EXECUTABLE := true
 include $(BUILD_EXECUTABLE)
-
-include $(CLEAR_VARS)
-LOCAL_MODULE := libf2fs_mkfs_static
-LOCAL_SRC_FILES := $(mkfs_f2fs_src_files)
-LOCAL_C_INCLUDES := $(common_C_INCLUDES)
-LOCAL_CFLAGS := $(global_CFLAGS) -Dmain=mkfs_f2fs_main
-LOCAL_MODULE_TAGS := optional
-include $(BUILD_STATIC_LIBRARY)
 
 #----------------------------------------------------------
 fsck_f2fs_src_files := \
@@ -76,16 +60,7 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_FORCE_STATIC_EXECUTABLE := true
 include $(BUILD_EXECUTABLE)
 
-include $(CLEAR_VARS)
-LOCAL_MODULE := libf2fs_fsck_static
-LOCAL_SRC_FILES := $(fsck_f2fs_src_files)
-LOCAL_C_INCLUDES := $(common_C_INCLUDES)
-LOCAL_CFLAGS := $(global_CFLAGS) -Dmain=fsck_f2fs_main
-LOCAL_MODULE_TAGS := optional
-include $(BUILD_STATIC_LIBRARY)
-
 #----------------------------------------------------------
-
 include $(CLEAR_VARS)
 LOCAL_MODULE := f2fstat
 LOCAL_SRC_FILES := tools/f2fstat.c
